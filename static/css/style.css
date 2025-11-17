@@ -1,0 +1,17 @@
+body {
+  background: #f8f9fa;
+}
+#sidebar-wrapper {
+  height: 100vh;
+  position: fixed;
+}
+#page-content-wrapper {
+  margin-left: 220px;
+}
+#wrapper.toggled #sidebar-wrapper {
+  display: none;
+}
+.card .display-6 {
+  font-size: 1.6rem;
+  font-weight: 600;
+}

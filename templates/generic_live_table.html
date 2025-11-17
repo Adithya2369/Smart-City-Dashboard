@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block content %}
+  <div class="grid">
+    <div class="card col-12" style="display:flex; align-items:center; justify-content:space-between;">
+      <div>
+        <h3 style="margin:0; color:var(--accent-1);">{{ title }}</h3>
+        <div class="tiny">Auto-refresh every 20 seconds</div>
+      </div>
+      <div>
+        <a class="btn" href="{{ request.path.replace('/live','/history') }}">View History</a>
+      </div>
+    </div>
+
+    {% if not live %}
+      <div class="card col-12 empty">No live data available.</div>
+    {% else %}
+      <div class="card col-12">
+        <div style="overflow:auto;">
+          <table>
+            <thead>
+              <tr>
+                {% for k in live.keys() %}
+                  <th>{{ k }}</th>
+                {% endfor %}
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                {% for v in live.values() %}
+                  <td>{{ v }}</td>
+                {% endfor %}
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="margin-top:10px;" class="tiny">Timestamp: {{ live.get('Timestamp') or live.get('Time') or 'N/A' }}</div>
+      </div>
+    {% endif %}
+  </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Auto refresh every 20 seconds
+    setTimeout(function(){
+        location.reload();
+    }, 20000);
+</script>
+{% endblock %}

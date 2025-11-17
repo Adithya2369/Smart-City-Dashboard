@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block content %}
+  <div class="grid">
+    <div class="card col-12">
+      <div style="display:flex; align-items:center; justify-content:space-between;">
+        <div>
+          <h3 style="margin:0; color:var(--accent-1);">{{ module }} — Historical</h3>
+          <div class="tiny">Full sheet history (download or filter locally)</div>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <button class="btn" id="downloadBtn">Download CSV</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card col-12">
+      {% if rows|length == 0 %}
+        <div class="empty">No historical data available.</div>
+      {% else %}
+        <div style="overflow:auto; max-height:540px;">
+          <table>
+            <thead>
+              <tr>
+                {% for col in columns %}
+                  <th>{{ col }}</th>
+                {% endfor %}
+              </tr>
+            </thead>
+            <tbody id="historyBody">
+              {% for row in rows %}
+                <tr>
+                  {% for col in columns %}
+                    <td>{{ row[col] }}</td>
+                  {% endfor %}
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <script>
+    // Download table as CSV
+    document.getElementById('downloadBtn')?.addEventListener('click', function(){
+      const cols = {{ columns|tojson }};
+      const rows = {{ rows|tojson }};
+      if(!rows || rows.length === 0){ alert('No data to download'); return; }
+      let csv = cols.join(',') + '\n';
+      rows.forEach(r => {
+        const line = cols.map(c => {
+          let v = r[c];
+          if (v === null || v === undefined) v = '';
+          // escape quotes
+          v = String(v).replace(/"/g, '""');
+          if (v.includes(',') || v.includes('"') || v.includes('\n')) {
+            v = `"${v}"`;
+          }
+          return v;
+        }).join(',');
+        csv += line + '\n';
+      });
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = ( '{{ module | replace(" ", "_") }}' + '_history.csv' );
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    });
+  </script>
+{% endblock %}

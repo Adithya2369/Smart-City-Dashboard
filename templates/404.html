@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block content %}
+  <div class="grid">
+    <div class="card col-12" style="text-align:center;">
+      <div style="font-size:72px; line-height:1;">😕</div>
+      <h2 style="color:var(--accent-1); margin:6px 0 0 0;">404 — Not found</h2>
+      <p class="muted-small" style="margin:6px 0 12px 0;">{{ message or 'The requested page could not be found.' }}</p>
+      <a class="btn" href="{{ url_for('home') }}">Go back home</a>
+    </div>
+  </div>
+{% endblock %}

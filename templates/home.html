@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block content %}
+  <div class="grid">
+    <div class="card col-12">
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:20px; flex-wrap:wrap;">
+        <div>
+          <h2 style="margin:0; color:var(--accent-1); font-size:20px;">Welcome to the Smart City Dashboard</h2>
+          <p class="muted-small" style="margin:6px 0 0 0;">Live snapshots and historical records from Google Sheets</p>
+        </div>
+        <div style="display:flex; gap:12px; align-items:center;">
+          <a class="btn" href="{{ url_for('weather_live') }}"><span class="icon">☁️</span> Weather</a>
+          <a class="btn" href="{{ url_for('noise_live') }}"><span class="icon">🔊</span> Noise</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="card col-3">
+      <div class="stat-title">Weather (last)</div>
+      <p class="stat-val">{{ updates['weather'] if updates and updates['weather'] else 'No data' }}</p>
+      <p class="muted-small">Last reading time</p>
+    </div>
+
+    <div class="card col-3">
+      <div class="stat-title">Noise (last)</div>
+      <p class="stat-val">{{ updates['noise'] if updates and updates['noise'] else 'No data' }}</p>
+      <p class="muted-small">Last reading time</p>
+    </div>
+
+    <div class="card col-3">
+      <div class="stat-title">Waste (last)</div>
+      <p class="stat-val">{{ updates['waste'] if updates and updates['waste'] else 'No data' }}</p>
+      <p class="muted-small">Last reading time</p>
+    </div>
+
+    <div class="card col-3">
+      <div class="stat-title">Air Quality (last)</div>
+      <p class="stat-val">{{ updates['air'] if updates and updates['air'] else 'No data' }}</p>
+      <p class="muted-small">Last reading time</p>
+    </div>
+
+    <div class="card col-12">
+      <h4 style="margin:0 0 12px 0;">Quick Links</h4>
+      <div style="display:flex; gap:12px; flex-wrap:wrap;">
+        <a class="btn" href="{{ url_for('weather_live') }}">Weather Live</a>
+        <a class="btn" href="{{ url_for('weather_history') }}">Weather History</a>
+        <a class="btn" href="{{ url_for('noise_live') }}">Noise Live</a>
+        <a class="btn" href="{{ url_for('noise_history') }}">Noise History</a>
+      </div>
+    </div>
+
+  </div>
+{% endblock %}
