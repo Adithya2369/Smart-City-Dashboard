@@ -1,58 +1,144 @@
 {% extends "base.html" %}
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  .chart-box { width:100%; height:140px; }
+  .chart-box canvas { width:100% !important; height:140px !important; display:block; }
+</style>
+{% endblock %}
+
 {% block content %}
-  <div class="grid">
-    <div class="card col-12" style="display:flex; align-items:center; justify-content:space-between;">
-      <div>
-        <h3 style="margin:0; color:var(--accent-1);">Air Quality — Live</h3>
-        <div class="tiny">Auto-refreshes every 20 seconds</div>
-      </div>
-      <div>
-        <a class="btn" href="{{ url_for('air_history') }}">View History</a>
+<div class="grid">
+  <div class="card col-12" style="display:flex; justify-content:space-between; align-items:center;">
+    <div>
+      <h3 style="margin:0; color:var(--accent-1);">Air Quality — Live</h3>
+      <div class="tiny">Auto-refresh every 20 seconds • showing last {{ history|length }} entries</div>
+    </div>
+    <a class="btn" href="{{ url_for('air_history') }}">View History</a>
+  </div>
+
+  {% if not live %}
+    <div class="card col-12 empty">No air quality data available.</div>
+  {% else %}
+    <div class="col-12" style="display:flex; gap:16px; flex-wrap:wrap;">
+
+  <div class="card" style="flex:1; min-width:150px;">
+    <div class="stat-title">AQI</div>
+    <div class="stat-val">{{ live.get('AQI','N/A') }}</div>
+  </div>
+
+  <div class="card" style="flex:1; min-width:150px;">
+    <div class="stat-title">CO₂ (ppm)</div>
+    <div class="stat-val">{{ live.get('CO2','N/A') }}</div>
+  </div>
+
+  <div class="card" style="flex:1; min-width:150px;">
+    <div class="stat-title">PM2.5</div>
+    <div class="stat-val">{{ live.get('PM2_5','N/A') }}</div>
+  </div>
+
+  <div class="card" style="flex:1; min-width:150px;">
+    <div class="stat-title">PM10</div>
+    <div class="stat-val">{{ live.get('PM10','N/A') }}</div>
+  </div>
+
+  <div class="card" style="flex:1; min-width:150px;">
+    <div class="stat-title">NO₂</div>
+    <div class="stat-val">{{ live.get('NO2','N/A') }}</div>
+  </div>
+
+  <div class="card" style="flex:1; min-width:150px;">
+    <div class="stat-title">O₃</div>
+    <div class="stat-val">{{ live.get('O3') or live.get(' O3') or 'N/A' }}</div>
+  </div>
+
+</div>
+
+
+    <div class="col-12" style="margin: 28px 0 18px 0; height: 1px; background: #e0e6ed;"></div>
+    <!-- Charts -->
+    <div class="card col-6">
+      <h4>AQI Trend</h4>
+      <div class="chart-box"><canvas id="aqiChart" width="800" height="140"></canvas></div>
+    </div>
+
+    <div class="card col-6">
+      <h4>CO₂ Trend</h4>
+      <div class="chart-box"><canvas id="co2Chart" width="800" height="140"></canvas></div>
+    </div>
+
+    <div class="card col-6">
+      <h4>PM2.5 Trend</h4>
+      <div class="chart-box"><canvas id="pm25Chart" width="800" height="140"></canvas></div>
+    </div>
+
+    <div class="card col-6">
+      <h4>PM10 Trend</h4>
+      <div class="chart-box"><canvas id="pm10Chart" width="800" height="140"></canvas></div>
+    </div>
+
+    <div class="card col-6">
+      <h4>NO₂ Trend</h4>
+      <div class="chart-box"><canvas id="no2Chart" width="800" height="140"></canvas></div>
+    </div>
+
+    <div class="card col-6">
+      <h4>O₃ Trend</h4>
+      <div class="chart-box"><canvas id="o3Chart" width="800" height="140"></canvas></div>
+    </div>
+
+    <div class="card col-12" style="margin-top:8px;">
+      <div style="display:flex; justify-content:space-between;">
+        <div class="tiny">Last: {{ live.get('Date','') }} {{ live.get('Time','') }}</div>
+        <div class="tiny">Source: Google Sheets (AirQuality)</div>
       </div>
     </div>
 
-    {% if not live %}
-      <div class="card col-12 empty">No air quality data available.</div>
-    {% else %}
-      <div class="card col-3">
-        <div class="stat-title">AQI</div>
-        <div class="stat-val">{{ live.get('AQI') or live.get('AQI ') or 'N/A' }}</div>
-        <div class="muted-small">Air Quality Index</div>
-      </div>
-
-      <div class="card col-3">
-        <div class="stat-title">CO₂ (ppm)</div>
-        <div class="stat-val">{{ live.get('CO2') or live.get('CO₂') or 'N/A' }}</div>
-        <div class="muted-small">Carbon dioxide</div>
-      </div>
-
-      <div class="card col-3">
-        <div class="stat-title">PM2.5 (µg/m³)</div>
-        <div class="stat-val">{{ live.get('PM2_5') or live.get('PM2.5') or 'N/A' }}</div>
-        <div class="muted-small">Fine particulate matter</div>
-      </div>
-
-      <div class="card col-3">
-        <div class="stat-title">PM10 (µg/m³)</div>
-        <div class="stat-val">{{ live.get('PM10') or 'N/A' }}</div>
-        <div class="muted-small">Coarse particulate matter</div>
-      </div>
-
-      <div class="card col-12" style="margin-top:8px;">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-          <div class="tiny">Timestamp: {{ live.get('Timestamp') or live.get('Time') or 'N/A' }}</div>
-          <div class="tiny">Source: Google Sheets (AirQuality)</div>
-        </div>
-      </div>
-    {% endif %}
-  </div>
+  {% endif %}
+</div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-    // Auto refresh every 20 seconds
-    setTimeout(function(){
-        location.reload();
-    }, 20000);
+  setTimeout(()=>location.reload(),20000);
+
+  const history = {{ history|tojson }};
+  const labels = history.map(r => (r.Date||'') + ' ' + (r.Time||''));
+
+  function toNum(v){ if (v===null||v===undefined||v==='') return null; const n=parseFloat(String(v).replace(',','')); return isNaN(n)?null:n; }
+  function maxArr(a){ return a.reduce((m,x)=> (x!==null && x!==undefined) ? Math.max(m,x) : m, -Infinity); }
+
+  const aqiS = history.map(r => toNum(r.AQI));
+  const co2S = history.map(r => toNum(r.CO2));
+  const pm25S= history.map(r => toNum(r.PM2_5));
+  const pm10S= history.map(r => toNum(r.PM10));
+  // handle 'O3' or ' O3'
+  const o3S  = history.map(r => toNum(r.O3 === undefined ? r[' O3'] : r.O3));
+  const no2S = history.map(r => toNum(r.NO2));
+
+  function makeLine(id, dataArr, color, yOpts) {
+    new Chart(document.getElementById(id), {
+      type:'line',
+      data: { labels: labels, datasets: [{ data: dataArr, borderColor: color, backgroundColor: color+'22', fill:true, tension:0.25, pointRadius:2 }]},
+      options: {
+        responsive: false,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 8 } },
+          y: Object.assign({ beginAtZero: true, ticks: { maxTicksLimit: 6 } }, yOpts || {})
+        }
+      }
+    });
+  }
+
+  if (labels.length > 0) {
+    const aqiMax = maxArr(aqiS); makeLine('aqiChart', aqiS, '#4a90e2', aqiMax===-Infinity?null:{ suggestedMax: Math.ceil(Math.max(100, aqiMax*1.2)) });
+    const co2Max = maxArr(co2S); makeLine('co2Chart', co2S, '#3490e2', co2Max===-Infinity?null:{ suggestedMax: Math.ceil(co2Max*1.2) });
+    const pm25Max = maxArr(pm25S); makeLine('pm25Chart', pm25S, '#ff9900', pm25Max===-Infinity?null:{ suggestedMax: Math.ceil(pm25Max*1.4) });
+    const pm10Max = maxArr(pm10S); makeLine('pm10Chart', pm10S, '#ed4d4d', pm10Max===-Infinity?null:{ suggestedMax: Math.ceil(pm10Max*1.4) });
+    const no2Max = maxArr(no2S); makeLine('no2Chart', no2S, '#6b7a90', no2Max===-Infinity?null:{ suggestedMax: Math.ceil(no2Max*1.4) });
+    const o3Max = maxArr(o3S); makeLine('o3Chart', o3S, '#3578e5', o3Max===-Infinity?null:{ suggestedMax: Math.ceil(o3Max*1.4) });
+  }
 </script>
 {% endblock %}

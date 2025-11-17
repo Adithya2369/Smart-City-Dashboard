@@ -1,56 +1,166 @@
 {% extends "base.html" %}
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  .chart-box { width:100%; height:140px; }
+  .chart-box canvas { width:100% !important; height:140px !important; max-height:140px !important; display:block; }
+  /* keep canvas rendering crisp */
+  canvas { image-rendering: -webkit-optimize-contrast; }
+</style>
+{% endblock %}
+
 {% block content %}
-  <div class="grid">
-    <div class="card col-12">
-      <div style="display:flex; align-items:center; justify-content:space-between;">
-        <div>
-          <h3 style="margin:0; color:var(--accent-1);">Weather — Live</h3>
-          <div class="tiny">Auto-refreshes every 20 seconds</div>
-        </div>
-        <div style="display:flex; gap:8px;">
-          <a class="btn" href="{{ url_for('weather_history') }}">View History</a>
-        </div>
-      </div>
+<div class="grid">
+  <div class="card col-12" style="display:flex; justify-content:space-between; align-items:center;">
+    <div>
+      <h3 style="margin:0; color:var(--accent-1);">Weather — Live</h3>
+      <div class="tiny">Auto-refresh every 20 seconds • showing last {{ history|length }} entries</div>
+    </div>
+    <a class="btn" href="{{ url_for('weather_history') }}">View History</a>
+  </div>
+
+  {% if not live %}
+    <div class="card col-12 empty">No live weather data available.</div>
+  {% else %}
+    <!-- Stats -->
+    <div class="card col-3">
+      <div class="stat-title">Temperature (°C)</div>
+      <div class="stat-val">{{ live.get('Temperature','N/A') }}</div>
     </div>
 
-    {% if not live %}
-      <div class="card col-12 empty">No live weather data available.</div>
-    {% else %}
-      {% set skip_ts = ['Timestamp','Time','timestamp','time'] %}
-      {% set items = [] %}
-      {% for k, v in live.items() %}
-        {% if k not in skip_ts %}
-          {% set _ = items.append({'k':k,'v':v}) %}
-        {% endif %}
-      {% endfor %}
+    <div class="card col-3">
+      <div class="stat-title">Humidity (%)</div>
+      <div class="stat-val">{{ live.get('Humidity','N/A') }}</div>
+    </div>
 
-      {% for it in items %}
-        <div class="card col-3">
-          <div class="stat-title">{{ it.k }}</div>
-          <div class="stat-val">{{ it.v }}</div>
-          <div class="muted-small">live</div>
-        </div>
-      {% endfor %}
+    <div class="card col-3">
+      <div class="stat-title">Pressure (hPa)</div>
+      <div class="stat-val">{{ live.get('Pressure','N/A') }}</div>
+    </div>
 
-      <div class="card col-12">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-          <div>
-            <div class="tiny">Timestamp</div>
-            <div style="font-weight:700;">{{ live.get('Timestamp') or live.get('Time') or 'N/A' }}</div>
-          </div>
-          <div class="tiny">Data source: Google Sheets (Weather)</div>
-        </div>
+    <div class="card col-3">
+      <div class="stat-title">Windspeed (m/s)</div>
+      <div class="stat-val">{{ live.get('Windspeed','N/A') }}</div>
+    </div>
+
+    <div class="card col-3">
+      <div class="stat-title">Cloudcover (%)</div>
+      <div class="stat-val">{{ live.get('Cloudcover','N/A') }}</div>
+    </div>
+
+    <div class="card col-3">
+      <div class="stat-title">Sunlight (Lux)</div>
+      <div class="stat-val">{{ live.get('Sunlight','N/A') }}</div>
+    </div>
+    <div class="col-12" style="margin: 28px 0 18px 0; height: 1px; background: #e0e6ed;"></div>
+    <!-- Charts -->
+    <div class="card col-6">
+      <h4 style="margin:0 0 8px 0;">Temperature Trend</h4>
+      <div class="chart-box"><canvas id="tempChart" width="800" height="140"></canvas></div>
+    </div>
+
+    <div class="card col-6">
+      <h4 style="margin:0 0 8px 0;">Humidity Trend</h4>
+      <div class="chart-box"><canvas id="humChart" width="800" height="140"></canvas></div>
+    </div>
+
+    <div class="card col-6">
+      <h4 style="margin:0 0 8px 0;">Pressure Trend</h4>
+      <div class="chart-box"><canvas id="pressChart" width="800" height="140"></canvas></div>
+    </div>
+
+    <div class="card col-6">
+      <h4 style="margin:0 0 8px 0;">Windspeed Trend</h4>
+      <div class="chart-box"><canvas id="windChart" width="800" height="140"></canvas></div>
+    </div>
+
+    <div class="card col-6">
+      <h4 style="margin:0 0 8px 0;">Cloudcover (0–100)</h4>
+      <div class="chart-box"><canvas id="cloudChart" width="800" height="140"></canvas></div>
+    </div>
+
+    <div class="card col-6">
+      <h4 style="margin:0 0 8px 0;">Sunlight (Lux)</h4>
+      <div class="chart-box"><canvas id="lightChart" width="800" height="140"></canvas></div>
+    </div>
+
+    <div class="card col-12" style="margin-top:8px;">
+      <div style="display:flex; justify-content:space-between;">
+        <div class="tiny">Last: {{ live.get('Date','') }} {{ live.get('Time','') }}</div>
+        <div class="tiny">Source: Google Sheets (Weather)</div>
       </div>
-    {% endif %}
-
-  </div>
+    </div>
+  {% endif %}
+</div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-    // Auto refresh every 20 seconds
-    setTimeout(function(){
-        location.reload();
-    }, 20000);
+  // auto-refresh
+  setTimeout(()=>location.reload(),20000);
+
+  // history passed from Flask: list of dicts
+  const history = {{ history|tojson }};
+  const labels = history.map(r => (r.Date||'') + ' ' + (r.Time||''));
+
+  function toNum(v){
+    if (v === null || v === undefined || v === '') return null;
+    const n = parseFloat(String(v).replace(',',''));
+    return isNaN(n) ? null : n;
+  }
+  function maxArr(a){
+    return a.reduce((m,x)=> (x!==null && x!==undefined) ? Math.max(m,x) : m, -Infinity);
+  }
+
+  const tempS = history.map(r => toNum(r.Temperature));
+  const humS  = history.map(r => toNum(r.Humidity));
+  const presS = history.map(r => toNum(r.Pressure));
+  const windS = history.map(r => toNum(r.Windspeed));
+  const cloudS= history.map(r => toNum(r.Cloudcover));
+  const lightS= history.map(r => toNum(r.Sunlight));
+
+  // chart helper
+  function makeLine(id, dataArr, color, yOpts) {
+    new Chart(document.getElementById(id), {
+      type: 'line',
+      data: { labels: labels, datasets: [{ data: dataArr, borderColor: color, backgroundColor: color + '22', fill:true, tension:0.25, pointRadius:2, borderWidth:2 }]},
+      options: {
+        responsive: false,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 8 } },
+          y: Object.assign({ beginAtZero: false, ticks: { maxTicksLimit: 6 } }, yOpts || {})
+        }
+      }
+    });
+  }
+
+  // sensible y-axis settings
+  const tmax = maxArr(tempS);
+  const tY = isFinite(tmax) ? { suggestedMin: Math.min(0, Math.floor(tmax - 8)), suggestedMax: Math.ceil(tmax + 5) } : null;
+
+  const hY = { suggestedMin: 0, suggestedMax: 100 };
+
+  const pmax = maxArr(presS);
+  const pY = isFinite(pmax) ? { suggestedMin: Math.floor(Math.min(...presS.filter(v=>v!=null)) - 5), suggestedMax: Math.ceil(pmax + 10) } : null;
+
+  const wmax = maxArr(windS);
+  const wY = isFinite(wmax) ? { beginAtZero: true, suggestedMax: Math.ceil(Math.max(5, wmax * 1.6)) } : { beginAtZero: true };
+
+  const cY = { suggestedMin: 0, suggestedMax: 100 };
+
+  const lmax = maxArr(lightS);
+  const lY = isFinite(lmax) ? { suggestedMin: 0, suggestedMax: Math.max(1000, Math.ceil(lmax * 1.2)) } : { suggestedMin: 0, suggestedMax: 2000 };
+
+  // draw charts (no-op if empty arrays)
+  if (labels.length > 0) {
+    makeLine('tempChart', tempS, '#4a90e2', tY);
+    makeLine('humChart', humS, '#3490e2', hY);
+    makeLine('pressChart', presS, '#3578e5', pY);
+    makeLine('windChart', windS, '#6b7a90', wY);
+    makeLine('cloudChart', cloudS, '#4a90e2', cY);
+    makeLine('lightChart', lightS, '#3578e5', lY);
+  }
 </script>
 {% endblock %}

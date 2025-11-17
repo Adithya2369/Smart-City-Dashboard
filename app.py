@@ -97,7 +97,14 @@ def weather_live():
     if records is None:
         abort(404, description="Weather sheet not found.")
     last = get_live_row_from_records(records)
-    return render_template("weather_live.html", live=last)
+    df = records_to_dataframe(records)
+    # get last N rows for charts (if available)
+    N = 20
+    history_rows = df.tail(N).to_dict(orient="records") if not df.empty else []
+    # send columns order to template if needed
+    columns = list(df.columns) if not df.empty else []
+    return render_template("weather_live.html", live=last, history=history_rows, columns=columns)
+
 
 @app.route("/weather/history")
 def weather_history():
@@ -117,8 +124,11 @@ def noise_live():
     if records is None:
         abort(404, description="Noise sheet not found.")
     last = get_live_row_from_records(records)
-    # last will be a dict with keys: Timestamp, Location1, Location2...
-    return render_template("generic_live_table.html", title="Noise - Live", live=last)
+    df = records_to_dataframe(records)
+    N = 20
+    history_rows = df.tail(N).to_dict(orient="records") if not df.empty else []
+    columns = list(df.columns) if not df.empty else []
+    return render_template("generic_live_table.html", title="Noise - Live", live=last, history=history_rows, columns=columns)
 
 @app.route("/noise/history")
 def noise_history():
@@ -137,7 +147,11 @@ def waste_live():
     if records is None:
         abort(404, description="Waste sheet not found.")
     last = get_live_row_from_records(records)
-    return render_template("generic_live_table.html", title="Waste - Live", live=last)
+    df = records_to_dataframe(records)
+    N = 20
+    history_rows = df.tail(N).to_dict(orient="records") if not df.empty else []
+    columns = list(df.columns) if not df.empty else []
+    return render_template("generic_live_table.html", title="Waste - Live", live=last, history=history_rows, columns=columns)
 
 @app.route("/waste/history")
 def waste_history():
@@ -156,7 +170,11 @@ def air_live():
     if records is None:
         abort(404, description="AirQuality sheet not found.")
     last = get_live_row_from_records(records)
-    return render_template("air_live.html", live=last)
+    df = records_to_dataframe(records)
+    N = 20
+    history_rows = df.tail(N).to_dict(orient="records") if not df.empty else []
+    columns = list(df.columns) if not df.empty else []
+    return render_template("air_live.html", live=last, history=history_rows, columns=columns)
 
 @app.route("/air/history")
 def air_history():

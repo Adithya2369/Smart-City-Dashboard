@@ -1,49 +1,227 @@
 {% extends "base.html" %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+  /* Noise bar chart height increased significantly */
+  .noise-chart-box {
+      width: 100%;
+      height: 100%;
+  }
+  .noise-chart-box canvas {
+      width: 100% !important;
+      height: 100% !important;
+      display: block;
+  }
+
+  /* Waste gauge PROPER SPEEDOMETER SIZE */
+  .gauge-box {
+      width: 100%;
+      max-width: 240px;
+      height: 140px;
+      margin: 16px auto;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+  }
+  .gauge-box canvas {
+      display: block !important;
+      margin: 0 auto !important;
+  }
+
+  /* Gauge percentage label */
+  .gauge-label {
+      position: absolute;
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 24px;
+      font-weight: 700;
+      color: #172033;
+  }
+
+  /* crisp rendering */
+  canvas { image-rendering: -webkit-optimize-contrast; }
+</style>
+{% endblock %}
+
 {% block content %}
-  <div class="grid">
-    <div class="card col-12" style="display:flex; align-items:center; justify-content:space-between;">
-      <div>
-        <h3 style="margin:0; color:var(--accent-1);">{{ title }}</h3>
-        <div class="tiny">Auto-refresh every 20 seconds</div>
-      </div>
-      <div>
-        <a class="btn" href="{{ request.path.replace('/live','/history') }}">View History</a>
-      </div>
+<div class="grid">
+
+  <!-- HEADER -->
+  <div class="card col-12" style="display:flex; justify-content:space-between; align-items:center;">
+    <div>
+      <h3 style="margin:0; color:var(--accent-1);">{{ title }}</h3>
+      <div class="tiny">Auto-refresh every 20 seconds</div>
+    </div>
+    <a class="btn" href="{{ request.path.replace('/live','/history') }}">View History</a>
+  </div>
+
+  {% if not live %}
+    <div class="card col-12 empty">No live data available.</div>
+  {% else %}
+
+    <!-- DATA TABLE -->
+    <div class="card col-12">
+      <table>
+        <thead><tr>{% for k in live.keys() %}<th>{{ k }}</th>{% endfor %}</tr></thead>
+        <tbody><tr>{% for v in live.values() %}<td>{{ v }}</td>{% endfor %}</tr></tbody>
+      </table>
     </div>
 
-    {% if not live %}
-      <div class="card col-12 empty">No live data available.</div>
-    {% else %}
-      <div class="card col-12">
-        <div style="overflow:auto;">
-          <table>
-            <thead>
-              <tr>
-                {% for k in live.keys() %}
-                  <th>{{ k }}</th>
-                {% endfor %}
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                {% for v in live.values() %}
-                  <td>{{ v }}</td>
-                {% endfor %}
-              </tr>
-            </tbody>
-          </table>
+    <!-- SECTION DIVIDER (soft line) -->
+    <div class="col-12" style="margin: 28px 0; border-bottom: 1px solid #e1e5eb;"></div>
+
+    {% set is_waste = 'Waste' in title %}
+
+    {% if is_waste %}
+
+      <!-- WASTE: SPEEDOMETER GAUGES -->
+      {% for k,v in live.items() if k not in ['Date','Time','Timestamp','timestamp','time'] %}
+      <div class="card col-3" style="text-align:center; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+        <div class="stat-title">{{ k }}</div>
+
+        <div class="gauge-box">
+            <canvas id="gauge{{ loop.index0 }}"></canvas>
+            <div class="gauge-label" id="label{{ loop.index0 }}">{{ v }}%</div>
         </div>
-        <div style="margin-top:10px;" class="tiny">Timestamp: {{ live.get('Timestamp') or live.get('Time') or 'N/A' }}</div>
       </div>
+      {% endfor %}
+
+    {% else %}
+
+      <!-- NOISE: BAR CHART -->
+      <div class="card col-12">
+        <h4>Noise Levels (dB)</h4>
+        <div class="noise-chart-box">
+            <canvas id="noiseChart" width="1200" height="300"></canvas>
+        </div>
+      </div>
+
+  <div class="col-12" style="margin: 28px 0 18px 0; height: 1px; background: #e0e6ed;"></div>
+
     {% endif %}
-  </div>
+  {% endif %}
+</div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-    // Auto refresh every 20 seconds
-    setTimeout(function(){
-        location.reload();
-    }, 20000);
+setTimeout(()=>location.reload(),20000);
+
+const live = {{ live|tojson }};
+const isWaste = "{{ title }}".toLowerCase().includes("waste");
+
+function toNum(v){
+    if (v === null || v === undefined || v === "") return 0;
+    const n = parseFloat(String(v));
+    return isNaN(n) ? 0 : n;
+}
+
+if (isWaste) {
+    /* -----------------------------
+       SPEEDOMETER GAUGES (FIXED VERSION)
+       ----------------------------- */
+    const keys = Object.keys(live).filter(k => !['Date','Time','Timestamp','timestamp','time'].includes(k));
+
+    keys.forEach((k, i) => {
+        const raw = toNum(live[k]);
+        const val = Math.max(0, Math.min(100, raw));
+
+        const ctx = document.getElementById("gauge"+i);
+
+        // Determine color based on fill level
+        let fillColor;
+        if (val > 80) {
+            fillColor = "rgb(237,77,77)"; // red - critical
+        } else if (val >= 60) {
+            fillColor = "rgb(255,165,64)"; // orange - warning
+        } else if (val >= 40) {
+            fillColor = "rgb(250,204,21)"; // yellow - moderate
+        } else {
+            fillColor = "rgb(74,144,226)"; // blue - good
+        }
+
+        new Chart(ctx, {
+            type: "doughnut",
+            data: {
+                datasets: [{
+                    data: [val, 100 - val],
+                    backgroundColor: [
+                        fillColor,
+                        "rgba(230,230,235,0.3)"
+                    ],
+                    borderWidth: 0,
+                    circumference: 180,
+                    rotation: 270
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                aspectRatio: 2,
+                rotation: -90,           // Start from left
+                circumference: 180,      // Half circle (180 degrees)
+                cutout: "75%",          // Thinner gauge ring
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        enabled: true,
+                        callbacks: {
+                            label: function(context) {
+                                return val + '% filled';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    });
+
+} else {
+
+    /* -----------------------------
+       NOISE — BAR CHART (height fixed)
+       ----------------------------- */
+    const keys = Object.keys(live).filter(k => !['Date','Time','Timestamp','timestamp','time'].includes(k));
+    const vals = keys.map(k => toNum(live[k]));
+
+    function colorFor(v){
+        if (v < 65) return "rgb(34,197,94)";      // green
+        if (v < 85) return "rgb(250,204,21)";     // yellow
+        if (v <= 100) return "rgb(255,165,64)";   // orange
+        return "rgb(237,77,77)";                  // red
+    }
+
+    const colors = vals.map(colorFor);
+
+    new Chart(document.getElementById("noiseChart"), {
+        type: "bar",
+        data: {
+            labels: keys,
+            datasets: [{
+                data: vals,
+                backgroundColor: colors,
+                borderRadius: 8
+            }]
+        },
+        options: {
+            responsive: false,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: { maxTicksLimit: 6 }
+                },
+                x: { ticks: { maxRotation: 0 } }
+            }
+        }
+    });
+}
 </script>
 {% endblock %}
